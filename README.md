@@ -14,7 +14,7 @@ Add the dependency to `mach.toml`:
 ```toml
 [dep.encoding]
 git = "https://github.com/briar-systems/mach-encoding"
-version = "^0.1"
+ref = "branch/dev"
 ```
 
 Then bind the library in a source file:
@@ -22,6 +22,8 @@ Then bind the library in a source file:
 ```mach
 use encoding;
 ```
+
+Modules: `encoding.base64` (standard and url-safe base64).
 
 
 ## Contributing
