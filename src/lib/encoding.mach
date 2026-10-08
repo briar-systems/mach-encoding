@@ -1,0 +1,5 @@
+# the encoding library, what a dependent's `use encoding;` binds
+# Binary-to-text encodings, starting with base64.
+
+# the startup a test dispatcher of this library links
+use std.runtime;
