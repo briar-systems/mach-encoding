@@ -17,13 +17,13 @@ git = "https://github.com/briar-systems/mach-encoding"
 ref = "branch/dev"
 ```
 
-Then bind the library in a source file:
+Then import each module by its source path in the package:
 
 ```mach
-use encoding;
+use encoding.base64;
 ```
 
-Modules: `encoding.base64` (standard and url-safe base64).
+`base64.encode` writes padded standard base64 and `base64.encode_url` writes unpadded url-safe base64, each sized by `base64.encoded_len`. `base64.decode` reads either alphabet, padded or not, into a buffer sized by `base64.decoded_len`.
 
 
 ## Contributing
