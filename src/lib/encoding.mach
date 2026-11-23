@@ -1,0 +1,8 @@
+# binary-to-text encodings, the modules the prebuilt encoding artifact carries
+#
+# a consumer imports each module by its source path, such as `use encoding.base64;`
+
+# the startup a test dispatcher of this library links
+use std.runtime;
+
+fwd encoding.base64;
