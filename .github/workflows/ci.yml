@@ -1,7 +1,7 @@
 name: CI
 
-# every pull request and merge group builds and tests on linux. a dispatch can name other
-# runners to test a change on windows or darwin before it merges.
+# every pull request and merge queue entry builds and tests on linux. a dispatch or
+# workflow_call can name other runners and profiles.
 
 on:
   pull_request:
@@ -11,6 +11,17 @@ on:
       runners:
         description: runners to test on, as a JSON array, e.g. ["macos-15", "windows-latest"]
         type: string
+      profile:
+        description: build profile
+        type: string
+        default: debug
+  workflow_call:
+    inputs:
+      runners:
+        type: string
+      profile:
+        type: string
+        default: debug
 
 permissions:
   contents: read
@@ -20,15 +31,15 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
-  MACH_VERSION: 6.10.1
-  MACH_REF: ac39ae9f12a6075605ef2670f1638d8418c87839
+  MACH_VERSION: 7.0.0
+  PROFILE: ${{ inputs.profile || 'debug' }}
 
 jobs:
   # every runner builds every artifact for every target and tests the ones it can run
   test:
     name: test (${{ matrix.runner }})
     runs-on: ${{ matrix.runner }}
-    timeout-minutes: 30
+    timeout-minutes: 120
     strategy:
       fail-fast: false
       matrix:
@@ -38,38 +49,23 @@ jobs:
         shell: bash
     steps:
       - uses: actions/checkout@v6
-      # until a 7.x release exists, the package is tested with a compiler built from the
-      # pinned MACH_REF, since the released seed cannot read its manifest keys
-      - name: restore the pinned mach
-        id: mach
-        uses: actions/cache@v6
-        with:
-          path: ${{ runner.temp }}/mach
-          key: mach-${{ runner.os }}-${{ runner.arch }}-${{ env.MACH_VERSION }}-${{ env.MACH_REF }}
-      - name: build the pinned mach
-        if: steps.mach.outputs.cache-hit != 'true'
+      - name: install mach
         run: |
-          export MACH_INSTALL_DIR="$RUNNER_TEMP/seed"
           url="https://raw.githubusercontent.com/briar-systems/mach/v$MACH_VERSION/dist"
-          exe=
           if [ "$RUNNER_OS" = Windows ]; then
+            export MACH_INSTALL_DIR="$(cygpath -w "$RUNNER_TEMP/mach")"
             pwsh -NoProfile -Command "irm $url/install.ps1 | iex"
-            exe=.exe
           else
+            export MACH_INSTALL_DIR="$RUNNER_TEMP/mach"
             curl -fsSL "$url/install.sh" | sh
           fi
-          git init --quiet "$RUNNER_TEMP/mach-src"
-          cd "$RUNNER_TEMP/mach-src"
-          git fetch --quiet --depth 1 https://github.com/briar-systems/mach "$MACH_REF"
-          git checkout --quiet FETCH_HEAD
-          mkdir -p "$RUNNER_TEMP/mach"
-          bash .github/scripts/seed-build.sh "$MACH_INSTALL_DIR/mach$exe" "$RUNNER_TEMP/mach/mach$exe"
-      - run: echo "$RUNNER_TEMP/mach" >> "$GITHUB_PATH"
+          echo "$MACH_INSTALL_DIR" >> "$GITHUB_PATH"
+      - run: mach --version
       - run: mach dep pull .
       - if: strategy.job-index == 0
         run: mach fmt --check .
-      - run: mach build . --all
-      - run: mach test . --all --timeout 10m
+      - run: mach build . --all -p "$PROFILE"
+      - run: mach test . --all -p "$PROFILE" --timeout 10m
 
   gate:
     if: always()
